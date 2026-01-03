@@ -8,13 +8,15 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: "*"
+}));
 app.use(express.json());
 
 app.use("/api/contacts", require("./routes/contact.routes"));
 
 app.get("/", (req, res) => {
-  res.send("API running");
+  res.send("Contact Manager API is running");
 });
 
 const PORT = process.env.PORT || 5000;
