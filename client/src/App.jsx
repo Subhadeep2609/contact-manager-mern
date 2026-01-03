@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import API from "./api";
+import ContactCard from "./components/ContactCard";
 
 export default function App() {
   const [form, setForm] = useState({
@@ -9,57 +10,55 @@ export default function App() {
     message: "",
   });
 
-  const [errors, setErrors] = useState({});
   const [contacts, setContacts] = useState([]);
+  const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState("");
+  const [sort, setSort] = useState("latest");
 
-  const validate = (values) => {
-    const err = {};
-    if (!values.name.trim()) err.name = "Name is required";
-    if (!values.email.trim()) err.email = "Email is required";
-    else if (!/^\S+@\S+\.\S+$/.test(values.email))
-      err.email = "Invalid email";
-    if (!values.phone.trim()) err.phone = "Phone is required";
-    return err;
-  };
-
-  const handleChange = (e) => {
-    const updated = { ...form, [e.target.name]: e.target.value };
-    setForm(updated);
-    setErrors(validate(updated));
+  const validate = (v) => {
+    const e = {};
+    if (!v.name) e.name = "Name required";
+    if (!v.email) e.email = "Email required";
+    else if (!/^\S+@\S+\.\S+$/.test(v.email)) e.email = "Invalid email";
+    if (!v.phone) e.phone = "Phone required";
+    return e;
   };
 
   const isValid = Object.keys(validate(form)).length === 0;
 
   const fetchContacts = async () => {
-    const res = await API.get("/contacts");
+    const res = await API.get(`/contacts?sort=${sort}`);
     setContacts(res.data);
   };
 
   useEffect(() => {
     fetchContacts();
-  }, []);
+  }, [sort]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const validationErrors = validate(form);
-    setErrors(validationErrors);
-
-    if (Object.keys(validationErrors).length !== 0) return;
+    const errs = validate(form);
+    setErrors(errs);
+    if (Object.keys(errs).length) return;
 
     await API.post("/contacts", form);
-
-    setSuccess("Contact submitted successfully!");
     setForm({ name: "", email: "", phone: "", message: "" });
+    setSuccess("Contact added successfully");
     fetchContacts();
 
     setTimeout(() => setSuccess(""), 2000);
   };
 
+  const deleteContact = async (id) => {
+    await API.delete(`/contacts/${id}`);
+    fetchContacts();
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-6">
-        {/* Form */}
+      <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-6">
+
+        {/* FORM */}
         <form
           onSubmit={handleSubmit}
           className="bg-white p-6 rounded-xl shadow"
@@ -70,73 +69,73 @@ export default function App() {
             <p className="text-green-600 mb-3">{success}</p>
           )}
 
-          {["name", "email", "phone"].map((field) => (
-            <div key={field} className="mb-3">
-              <label className="block text-sm font-medium capitalize">
-                {field}
-              </label>
+          {["name", "email", "phone"].map((f) => (
+            <div key={f} className="mb-3">
+              <label className="block capitalize text-sm">{f}</label>
               <input
-                name={field}
-                value={form[field]}
-                onChange={handleChange}
+                name={f}
+                value={form[f]}
+                onChange={(e) =>
+                  setForm({ ...form, [f]: e.target.value })
+                }
                 className="w-full mt-1 p-2 border rounded"
               />
-              {errors[field] && (
-                <p className="text-red-500 text-sm">
-                  {errors[field]}
-                </p>
+              {errors[f] && (
+                <p className="text-red-500 text-sm">{errors[f]}</p>
               )}
             </div>
           ))}
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium">
-              Message
-            </label>
-            <textarea
-              name="message"
-              value={form.message}
-              onChange={handleChange}
-              className="w-full mt-1 p-2 border rounded"
-              rows="3"
-            />
-          </div>
+          <textarea
+            name="message"
+            value={form.message}
+            onChange={(e) =>
+              setForm({ ...form, message: e.target.value })
+            }
+            placeholder="Message (optional)"
+            className="w-full p-2 border rounded mb-3"
+          />
 
           <button
             disabled={!isValid}
-            className={`w-full py-2 rounded text-white font-semibold ${
+            className={`w-full py-2 rounded text-white ${
               isValid
                 ? "bg-blue-600 hover:bg-blue-700"
-                : "bg-gray-400 cursor-not-allowed"
+                : "bg-gray-400"
             }`}
           >
             Submit
           </button>
         </form>
 
-        {/* Contacts List */}
+        {/* CONTACT LIST */}
         <div className="bg-white p-6 rounded-xl shadow">
-          <h2 className="text-xl font-bold mb-4">Contacts</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Contacts</h2>
+
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              className="border p-1 rounded text-sm"
+            >
+              <option value="latest">Latest</option>
+              <option value="oldest">Oldest</option>
+            </select>
+          </div>
 
           {contacts.length === 0 && (
-            <p className="text-gray-500">No contacts yet</p>
+            <p className="text-gray-500">No contacts found</p>
           )}
 
-          <ul className="space-y-3">
+          <div className="space-y-3">
             {contacts.map((c) => (
-              <li
+              <ContactCard
                 key={c._id}
-                className="border p-3 rounded text-sm"
-              >
-                <p className="font-semibold">{c.name}</p>
-                <p>{c.email}</p>
-                <p>{c.phone}</p>
-                {c.message && (
-                  <p className="text-gray-600">{c.message}</p>
-                )}
-              </li>
+                contact={c}
+                onDelete={deleteContact}
+              />
             ))}
-          </ul>
+          </div>
         </div>
       </div>
     </div>
