@@ -12,5 +12,9 @@ yarn-error.log*
 # OS
 .DS_Store
 
-# Vite
+# Build
 dist/
+
+# VS Code
+.vscode/
+.history/
